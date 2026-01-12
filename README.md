@@ -44,7 +44,7 @@ This chatbot uses a local Large Language Model to ensure data privacy and zero l
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/industrial-iot-chatbot.git
+git clone https://github.com/amirrezamsh/industrial-sensor-chatbot.git
 cd industrial-iot-chatbot
 ```
 

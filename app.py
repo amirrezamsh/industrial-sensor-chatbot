@@ -191,15 +191,21 @@ for i, message in enumerate(st.session_state.messages):
         st.markdown(message["content"])
 
 if user_message:
-    # When the user posts a message...
 
-    # Streamlit's Markdown engine interprets "$" as LaTeX code (used to
-    # display math). The line below fixes it.
-    user_message = user_message.replace("$", r"\$")
+    # 1. IMMEDIATE STATE UPDATE
+    # Add the user message to history NOW. This prevents UI sync issues if
+    # the app re-runs while processing.
+    st.session_state.messages.append({"role": "user", "content": user_message})
 
-    # Display message as a speech bubble.
+    # -------------------------------------------------------------------------
+    # 2. IMMEDIATE RENDER
+    # Display the user message bubble immediately.
+    # -------------------------------------------------------------------------
+    user_message_clean = user_message.replace("$", r"\$")
     with st.chat_message("user"):
-        st.text(user_message)
+        st.text(user_message_clean)
+
+
 
     # Display assistant response as a speech bubble.
     with st.chat_message("assistant"):
@@ -212,9 +218,11 @@ if user_message:
             if time_diff < MIN_TIME_BETWEEN_REQUESTS:
                 time.sleep(time_diff.seconds + time_diff.microseconds * 0.001)
 
-            user_message = user_message.replace("'", "")
-
-        response_generator = generate_ollma_response(user_message, st.session_state.messages)
+            
+            # CRITICAL FIX: Pass a COPY of the messages to the function.
+            # Use .copy() or list slicing [:] so the function doesn't modify the global state.
+            history_copy = st.session_state.messages.copy() 
+            response_generator = generate_ollma_response(user_message, history_copy)
 
         with st.container():
             # Stream the LLM response.
@@ -254,10 +262,15 @@ if user_message:
             # **TEMPORARY CHANGE:** Skip process_ai_command and treat as final response
             final_response_output = response_text
 
-            # Add messages to chat history.
-            st.session_state.messages.append({"role": "user", "content": user_message})
-            st.session_state.messages.append({"role": "assistant",
-                                               "content": final_response_output,
-                                               "images": response_figures})
+            # -----------------------------------------------------------------
+            # 4. FINAL STATE UPDATE
+            # Only append the ASSISTANT response here. 
+            # (The user message was already appended at step 1).
+            # -----------------------------------------------------------------
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": response_text,
+                "images": response_figures
+            })
 
 

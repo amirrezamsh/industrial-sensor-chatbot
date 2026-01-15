@@ -190,21 +190,25 @@ JSON: {{
 DEFAULT_ROUTER_PROMPT = build_router_prompt([], [], [], [])
 
 
-def prepare_responser_prompt(user_query, system_flag=None, tool_output=None):
+def prepare_responser_prompt(user_query, system_flag=None, tool_output=None, extra_info = None):
     
     responder_input = f"User Query: {user_query}"
     
     # Guidance map for different system flags
     guidance_map = {
         "NORMAL_CONVERSATION": """
-If the System Flag is "normal_conversation" (or missing):
 Answer the user's question helpfully, BUT ONLY within the scope of IoT and Engineering.
 If the user greets you ("Hello"), introduce yourself as an IoT Data Analyst.""",
 
+        "DATA_ANALYSIS_SUCCESS": """
+The user's request was valid, and the system has successfully generated statistical data in the Tool Output.
+1. ANALYZE the provided 'Tool Output' data.
+2. INTERPRET the values for the user (e.g., explain what a high Standard Deviation implies in this context).
+3. Do NOT simply output the raw JSON/numbers; provide an engineering summary.""",
+
         "IRRELEVANT_REQUEST" : """
 Do not answer the question at all since it is an out of scope and irrelevant request.
-Do not provide opinion, explanations or commentary.
-""",
+Do not provide opinion, explanations or commentary.""",
 
         "MISSING_DATASET": """If the system flag is MISSING_DATASET, the user has asked a technical question but has not provided the dataset.
 In this case, politely inform the user that they need to first enter the path to their dataset in the left sidebar and click the "Check validity" button.

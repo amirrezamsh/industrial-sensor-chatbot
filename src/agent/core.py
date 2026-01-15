@@ -109,6 +109,8 @@ def generate_ollma_response(prompt, message_history) :
     yield ("__STATUS__", "🧠 Routing your request...")
     router_agent_response = router_agent(prompt, message_history)
 
+    print(message_history)
+
     generated_figures = [] # Store figures here
 
     tool_output = ""
@@ -150,7 +152,6 @@ def generate_ollma_response(prompt, message_history) :
             acqusition_id = params.get("acquisition_id", None)
         
         print(req,end="\n\n")
-        return
 
     except json.JSONDecodeError:
         req_category = "normal_conversation"
@@ -234,14 +235,15 @@ def generate_ollma_response(prompt, message_history) :
                 else :
                     system_flag = "BAD_ACQUSITION"
 
+
+    elif req_category == "irrelevant_request" :
+        system_flag = "IRRELEVANT_REQUEST"
                         
     elif req_category == "normal_conversation" :
         system_flag = "NORMAL_CONVERSATION"
 
-    elif req_category == "irrelevant_request" :
-        system_flag = "IRRELEVANT_REQUEST"
-
-    # print("system flag: ",system_flag)
+    if (req_category == "feature_importance_analysis" or req_category == "time_series" or req_category == "frequency_spectrum") and not system_flag:
+        system_flag = "DATA_ANALYSIS_SUCCESS"
 
 
     responder_input = prepare_responser_prompt(user_query= prompt, system_flag= system_flag, tool_output= tool_output)

@@ -5,7 +5,7 @@ import time
 from src.agent.core import check_ollama_connection
 from src.agent.core import generate_ollma_response
 from src.utils.file_utils import validate_dataset_structure, scan_dataset_metadata
-from src.agent.prompts import build_router_prompt
+from src.agent.prompts import build_router_prompt, build_responder_prompt
 from src.config import FEATURES_DIR
 
 import time
@@ -47,6 +47,9 @@ if "DATASET_PATH" not in st.session_state:
 if "ROUTER_PROMPT" not in st.session_state :
     st.session_state.ROUTER_PROMPT = build_router_prompt([], [], [], [])
 
+if "RESPONDER_PROMPT" not in st.session_state :
+    st.session_state.RESPONDER_PROMPT = build_responder_prompt([], [], [], [])
+
 if "FEATURES_PATH" not in st.session_state:
     st.session_state.FEATURES_PATH = None
 
@@ -86,6 +89,7 @@ if st.sidebar.button("Chcek validity"):
             st.session_state.DATASET_PATH = dataset_path
             sensor_names, sensor_types, conditions, faults_details = scan_dataset_metadata(st.session_state.DATASET_PATH)
             st.session_state.ROUTER_PROMPT = build_router_prompt(sensor_names, sensor_types, conditions, faults_details)
+            st.session_state.RESPONDER_PROMPT = build_responder_prompt(sensor_names, sensor_types, conditions, faults_details)
 
             if os.path.basename(st.session_state.DATASET_PATH) in os.listdir(FEATURES_DIR) :
                 vote()
@@ -162,6 +166,7 @@ with title_row:
         st.session_state.selected_suggestion = None
         st.session_state.DATASET_PATH = None
         st.session_state.ROUTER_PROMPT = build_router_prompt([],[], [], [])
+        st.session_state.RESPONDER_PROMPT = build_router_prompt([],[], [], [])
         if "validation_status" in st.session_state:
             del st.session_state["validation_status"]
         if "validation_message" in st.session_state:

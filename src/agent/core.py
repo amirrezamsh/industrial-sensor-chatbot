@@ -5,11 +5,11 @@ import json
 import numpy as np
 import pandas as pd
 from datetime import timedelta
-from src.config import OLLAMA_MODEL, OLLAMA_API_URL, RESPONDER_AGENT_PROMPT, ALGORITHMS, FEATURES_DIR
+from src.config import OLLAMA_MODEL, OLLAMA_API_URL, ALGORITHMS, FEATURES_DIR
 from src.analysis.feature_importance import run_analysis, generate_summary_string
 from src.analysis.feature_extractor import load_and_label_all_data_parallel
 from src.utils.file_utils import check_acquisition_presence, select_acquisition_paths
-from src.agent.prompts import prepare_responser_prompt
+from src.agent.prompts import prepare_user_prompt_responder
 from src.visualization.sensor_plots import get_sensor_visual_report, get_sensor_frequency_report
 from src.utils.file_utils import scan_dataset_metadata, is_type_valid
 
@@ -63,7 +63,7 @@ def router_agent(prompt, message_history):
 
 def responder_agent(prompt, message_history):
     # 1. Prepare messages for Llama 3.1 (System + History + User)
-    messages = [{"role": "system", "content": RESPONDER_AGENT_PROMPT}]
+    messages = [{"role": "system", "content": st.session_state.RESPONDER_PROMPT}]
     for message in message_history:
         # Use content and role from Streamlit session state history
         messages.append({"role": message["role"], "content": message["content"]})
@@ -117,6 +117,8 @@ def generate_ollma_response(prompt, message_history) :
     try:
         req = json.loads(router_agent_response)
 
+        print(req,end="\n\n")
+
         req_category = req.get("category", "normal_conversation")
         is_vague = req.get("is_vague", False)
         reason = req.get("reasoning", None)
@@ -124,32 +126,37 @@ def generate_ollma_response(prompt, message_history) :
         # Extract new parameters
         if req_category == "feature_importance_analysis" :
             params = req.get("parameters", {}).get("analysis_config",{})
-            is_global = params.get("global", True)
-            target_sensors = params.get("target_sensors",[])
-            alg = params.get("algorithm","rf")
+            if params is not None :
+                is_global = params.get("global", True)
+                target_sensors = params.get("target_sensors",[])
+                alg = params.get("algorithm","rf")
+            else :
+                req_category = "normal_conversation"
 
         elif req_category == "time_series" or req_category == "frequency_spectrum"  :
             params = req.get("parameters", {}).get("visual_config",{})
-            target_sensors = params.get("target_sensors",[])
+            if params is not None :
+                target_sensors = params.get("target_sensors",[])
 
-            if target_sensors :
-                if len(set([item[0] for item in target_sensors])) == 1 and len(target_sensors) > 1:
-                    sensor = target_sensors[0][0]
-                    sensor_type = None
+                if target_sensors :
+                    if len(set([item[0] for item in target_sensors])) == 1 and len(target_sensors) > 1:
+                        sensor = target_sensors[0][0]
+                        sensor_type = None
+                    else :
+                        sensor, sensor_type = target_sensors[0]
+                        if len(target_sensors) > 1:
+                            system_flag = "TOO_MANY_TARGETS"
+
                 else :
-                    sensor, sensor_type = target_sensors[0]
-                    if len(target_sensors) > 1:
-                        system_flag = "TOO_MANY_TARGETS"
+                    sensor = sensor_type = None
 
+                subset = params.get("subset", None)
+                condition = params.get("condition", None)
+                label_detail = params.get("label_detail", None)
+                acqusition_id = params.get("acquisition_id", None)
             else :
-                sensor = sensor_type = None
-
-            subset = params.get("subset", None)
-            condition = params.get("condition", None)
-            label_detail = params.get("label_detail", None)
-            acqusition_id = params.get("acquisition_id", None)
+                req_category = "normal_conversation"
         
-        print(req,end="\n\n")
 
     except json.JSONDecodeError:
         req_category = "normal_conversation"
@@ -239,12 +246,16 @@ def generate_ollma_response(prompt, message_history) :
                         
     elif req_category == "normal_conversation" :
         system_flag = "NORMAL_CONVERSATION"
+    else :
+        req_category = "normal_conversation"
+        system_flag = "NORMAL_CONVERSATION"
+
 
     if (req_category == "feature_importance_analysis" or req_category == "time_series" or req_category == "frequency_spectrum") and not system_flag:
         system_flag = "DATA_ANALYSIS_SUCCESS"
 
 
-    responder_input = prepare_responser_prompt(user_query= prompt, system_flag= system_flag, tool_output= tool_output)
+    responder_input = prepare_user_prompt_responder(user_query= prompt, system_flag= system_flag, tool_output= tool_output)
 
     # 4. Clear status before speaking (Optional, essentially "Ready")
     yield ("__STATUS__", "COMPLETE")

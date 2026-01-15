@@ -31,7 +31,6 @@ def router_agent(prompt, message_history):
     Sends the prompt to the local Ollama server and streams/returns the response.
     The response format is handled by the SYSTEM_PROMPT defined in config.py.
     """
-
     
     # 1. Prepare messages for Llama 3.1 (System + History + User)
     messages = [{"role": "system", "content": st.session_state.ROUTER_PROMPT}]
@@ -109,7 +108,6 @@ def generate_ollma_response(prompt, message_history) :
     yield ("__STATUS__", "🧠 Routing your request...")
     router_agent_response = router_agent(prompt, message_history)
 
-    print(message_history)
 
     generated_figures = [] # Store figures here
 

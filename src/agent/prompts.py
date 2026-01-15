@@ -1,14 +1,10 @@
-def build_router_prompt(valid_sensor_names, valid_sensor_types, vaild_conditions, valid_label_details):
-    """
-    Constructs the system prompt dynamically based on the actual dataset content.
-    """
+def build_router_prompt(valid_sensor_names, valid_sensor_types, valid_conditions, valid_label_details):
     
-    # Format lists for display
-    sensors_str = ", ".join(valid_sensor_names) if valid_sensor_names else "No specific sensors found."
-    types_str = ", ".join(valid_sensor_types) if valid_sensor_types else "No specific types found."
-    conditions_str = ", ".join(vaild_conditions) if vaild_conditions else "No specific condition found."
-    labels_str = ", ".join(valid_label_details) if valid_label_details else "No specific condition found."
-
+    # Use explicit "NONE" markers so the LLM knows the list is empty, not just text.
+    sensors_str = ", ".join(valid_sensor_names) if valid_sensor_names else "NONE"
+    types_str = ", ".join(valid_sensor_types) if valid_sensor_types else "NONE"
+    conditions_str = ", ".join(valid_conditions) if valid_conditions else "NONE"
+    labels_str = ", ".join(valid_label_details) if valid_label_details else "NONE"
 
     PROMPT = f"""
 You are the central intent classification engine for an Industrial IoT Predictive Maintenance Chatbot. 
@@ -26,105 +22,62 @@ The user is asking about a dataset containing time-series data from various indu
 ### CATEGORY DEFINITIONS
 1. "normal_conversation": Greetings, general IoT definitions, or bot capabilities.
 2. "feature_importance_analysis": Machine Learning tasks (ranking sensors, feature comparisons).
-3. "time_series":
-   Plot raw sensor measurements as a function of time.
-   Appropriate for examining signal evolution, trends, noise, and transient events.
-
-4. "frequency_spectrum":
-   Plot the frequency-domain representation of a time-series signal.
-   Appropriate for analyzing periodicity, dominant frequency components, and spectral energy distribution.
+3. "time_series": Plot raw sensor measurements vs time.
+4. "frequency_spectrum": Plot frequency-domain (FFT) of a signal.
 5. "irrelevant_request": Topics unrelated to Engineering, IoT, or this dataset.
 
 ### OUTPUT FORMAT
-You must return ONLY a JSON object. 
+Return ONLY a JSON object. No markdown formatting. No conversational text.
 
 {{
   "category": "...",
   "is_vague": true/false,
   "reasoning": "...",
   "parameters": {{
-      /* Only if category is feature_importance_analysis */
       "analysis_config": {{
           "global": true/false,
           "target_sensors": [ ["NAME", "TYPE"] ],
           "algorithm": "rf"|"lr"|"dt"
-      }},
-      /* Only if category is data_visualization */
+      }} | null,
       "visual_config": {{
           "target_sensors": [ ["NAME", "TYPE"] ],
           "subset": "OK"|"KO"| null,
           "condition": "NAME_FROM_LIST"|null,
           "label_detail": "NAME_FROM_LIST"|null,
-          "acqusition_id": "STRING"|null
-      }}
+          "acquisition_id": "STRING"|null
+      }} | null
   }}
 }}
 
+### CRITICAL RULES
+1. **Null Management:** You must ALWAYS return both `analysis_config` and `visual_config`. Set the unused one to `null`.
+2. **List of Lists:** `target_sensors` must be `[["Name", "Type"], ...]`. Never use tuples `()`.
+3. **Strict Vocabulary:** - If a user mentions a sensor NOT in `VALID SENSOR NAMES`, mark `is_vague: true`.
+   - If `VALID SENSOR NAMES` is "NONE", you cannot accept specific sensor requests.
+4. **Acquisition ID Priority:** If `acquisition_id` is extracted, force `condition` and `label_detail` to `null`.
 
-**IMPORTANT:** JSON does not support tuples `()`. You must use lists `[]` to represent pairs.
-
-### PARAMETER EXTRACTION RULES (For 'feature_importance_analysis')
-
-1. **Global Analysis:**
-   - If user asks "Which sensor is best?", "Analyze dataset", or doesn't specify names -> Set `global: true`, `target_sensors: []`.
-
-2. **Specific Analysis:**
-   - If user asks about one or more sensors -> Set `global: false`.
-   - Set `target_sensors` to a list of pairs `[NAME, TYPE]`.
-   - **Name:** Must be one of the VALID SENSOR NAMES list above.
-   - **Type:** If specified (e.g. "Humidity"), use the valid type code. If NOT specified, use `null`.
-
-3. **Algorithm Selection:**
-   - If user mentions "Logistic Regression" -> "lr", "Decision Tree" -> "dt".
-   - Default is "rf".
-   - If user mentions UNSUPPORTED algo -> "unsupported".
-
-4. **Handling Ambiguity:**
-   - If the user says "Analyze the sensor" (no name) -> `is_vague: true`.
-   - If the user mentions a specific sensor name from the VALID list, it is NOT vague.
-
-5. **Specific Labels:** If the user mentions a specific fault type , find the matching string in VALID FAULT DETAILS and place it in `label_detail`.
-6. **Conditions:** If the user mentions "steady" or "cycle", map it to the closest match in VALID CONDITIONS (e.g., "vel-fissa" or "no-load-cycles").
-7. **Subsets:** If the user mentions "faulty" or "failure" set `subset: "KO"`. If "healthy" or "normal" set `subset: "OK"`.
-8. **Acquisition ID Priority:** If the user provides a specific folder name or ID (e.g., "STWIN_00026"), set `acquisition_id` to that string. 
-   - **Crucial:** If `acquisition_id` is present, `condition`, and `label_detail` to `null` as the ID uniquely identifies the target data.
-
+### PARAMETER EXTRACTION LOGIC
+1. **Target Sensors:** Extract as `[NAME, TYPE]`. If Type is unspecified, use `null`.
+2. **Algorithms:** Map "Logistic Regression"->"lr", "Decision Tree"->"dt", Default->"rf".
+3. **Subsets:** "faulty"/"failure" -> "KO"; "healthy"/"normal" -> "OK".
 
 ### FEW-SHOT EXAMPLES
-
 User: "Hello, what can you do?"
 JSON: {{
   "category": "normal_conversation",
   "is_vague": false,
   "reasoning": "Greeting.",
-  "parameters": {{
-      "visual_config" : null,
-      "analysis_config" : null
-  }}
+  "parameters": {{ "visual_config": null, "analysis_config": null }}
 }}
-
-User: "Which sensor is the best globally?"
-JSON: {{
-  "category": "feature_importance_analysis",
-  "is_vague": false,
-  "reasoning": "Global ranking requested.",
-  "parameters": {{
-      "visual_config" : null,
-      "analysis_config" : {{
-         "global": true, "target_sensors": [], "algorithm": "rf"
-      }}
-   }}
-}}
-
 
 User: "Compare Sensor_A and Sensor_B using Logistic Regression."
 JSON: {{
   "category": "feature_importance_analysis",
   "is_vague": false,
-  "reasoning": "Comparison request with specific algo.",
+  "reasoning": "Comparison request.",
   "parameters": {{
-      "visual_config" : null,
-      "analysis_config" : {{
+      "visual_config": null,
+      "analysis_config": {{
          "global": false, 
          "target_sensors": [ ["Sensor_A", null], ["Sensor_B", null] ],
          "algorithm": "lr"
@@ -132,49 +85,15 @@ JSON: {{
   }}
 }}
 
-User: "I would like to generate a time-series plot of the signal recorded by the HTTS21 sensor. limit the analysis to acquisitions labeled as KO / faulty"
-JSON: {{
-  "category": "time_series",
-  "is_vague": false,
-  "reasoning": "time series plot request.",
-  "parameters": {{
-      "analysis_config" : null,
-      "visual_config": {{
-            "target_sensors" : [["HTTS21",null]],
-            "subset" : "KO",
-            "condition" : null,
-            "label_detail" : null,
-            "acquisition_id" : null
-      }}
-  }}
-}}
-
-User : "I would like to generate the frequency spectrum of the signal measured by the ISM330DHCX sensor (sensor type: ACC) Please perform the analysis using the data located in the following acquisition folder: no-load-cycles_KO_HIGH_2mm_STWIN_00002."
+User : "frequency spectrum for ISM330DHCX in folder STWIN_00002"
 JSON: {{
   "category": "frequency_spectrum",
   "is_vague": false,
-  "reasoning": "frequency_spectrum request.",
+  "reasoning": "Specific sensor and folder ID.",
   "parameters": {{
-      "analysis_config" : null,
+      "analysis_config": null,
       "visual_config": {{
-            "target_sensors" : [["ISM330DHCX","ACC"]],
-            "subset" : null,
-            "condition" : null,
-            "label_detail" : null,
-            "acquisition_id" : "no-load-cycles_KO_HIGH_2mm_STWIN_00002"
-      }}
-  }}
-}}
-# 
-User : "generate for me frequency spectrum plot for the sensor ISM330DHCX in folder STWIN_00002"
-JSON: {{
-  "category": "frequency_spectrum",
-  "is_vague": false,
-  "reasoning": "The user mentioned the sensor but did not specify a type (like ACC or GYRO). Setting type to null.",
-  "parameters": {{
-      "analysis_config" : null,
-      "visual_config": {{
-            "target_sensors" : [["ISM330DHCX",null]],
+            "target_sensors" : [ ["ISM330DHCX", null] ],
             "subset" : null,
             "condition" : null,
             "label_detail" : null,
@@ -182,7 +101,6 @@ JSON: {{
       }}
   }}
 }}
-
 """
     return PROMPT
 

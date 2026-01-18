@@ -59,12 +59,15 @@ Return ONLY a JSON object. No markdown formatting. No conversational text.
 2. **List of Lists:** `target_sensors` must be `[["Name", "Type"], ...]`. Never use tuples `()`.
 3. **Strict Vocabulary:** - If a user mentions a sensor name NOT in `VALID SENSOR NAMES`, mark `is_vague: true`.
    - **EXCEPTION:** If the user specifies a valid `SENSOR TYPE` but omits the name, this is VALID. Return `[null, "TYPE"]`.
-4. **Acquisition ID Priority:** If `acquisition_id` is extracted, force `condition` and `label_detail` to `null`.
+4. **Acquisition ID Priority:** If `acquisition_id` is extracted, you **MUST** set `subset`, `condition`, and `label_detail` to `null`. The ID is specific enough; do not redundantly fill other filters.
 
 ### PARAMETER EXTRACTION LOGIC
 1. **Target Sensors:** Extract as `[NAME, TYPE]`. 
+   - **CRITICAL:** If the user does not explicitly say "Gyro", "Acc", "Temp", etc., you MUST set Type to `null`. DO NOT guess.
+   - **NO CONTEXT LEAKAGE:** Treat the current query as a standalone request. Do NOT import parameters from previous conversation turns unless the user explicitly asks to.
+   - Example: "Plot IIS3DWB" -> `[["IIS3DWB", null]]` (Correct).
+   - Example: "Plot IIS3DWB" -> `[["IIS3DWB", "ACC"]]` (INCORRECT - Do not guess!).
    - If Name is missing but Type is found, use `[null, "TYPE"]`.
-   - If Type is unspecified, use `null` (e.g. `["NAME", null]`).
 2. **Algorithms:** Map "Logistic Regression"->"lr", "Decision Tree"->"dt", Default->"rf".
 3. **Subsets:** "faulty"/"failure" -> "KO"; "healthy"/"normal" -> "OK".
 
@@ -120,6 +123,23 @@ JSON: {{
             "condition" : null,
             "label_detail" : null,
             "acquisition_id" : "STWIN_00002"
+      }}
+  }}
+}}
+
+User: "Visualize the data for IIS3DWB from the specific acquisition folder vel-fissa_KO_LOW_2mm_PMI_400rpm"
+JSON: {{
+  "category": "time_series",
+  "is_vague": false,
+  "reasoning": "Specific acquisition ID provided. Subset, condition, and label_detail must be null.",
+  "parameters": {{
+      "analysis_config": null,
+      "visual_config": {{
+            "target_sensors" : [ ["IIS3DWB", null] ],
+            "subset" : null,
+            "condition" : null,
+            "label_detail" : null,
+            "acquisition_id" : "vel-fissa_KO_LOW_2mm_PMI_400rpm"
       }}
   }}
 }}
@@ -269,18 +289,28 @@ Ask the user to provide the subset (OK/KO) on which they want the requested plot
         "INVALID_ACQUSITION": """User query is about a plot generation for a given acquisition folder,
 However, the given folder is not found within the provided dataset. Tell the user to carefully write the acquisition name""",
 
-        "MISSING_SENSOR": """The user's request is missing a valid sensor name or the requested sensor
-was not found in the dataset. Ask them to specify a valid sensor from the available list.""",
+        "MISSING_SENSOR": """
+Apologize and inform the user that their request cannot be processed because a valid Sensor Name is missing.
+- **DO NOT** suggest specific sensors or types.
+- **DO NOT** list "possible" options from your internal knowledge.
+- Simply ask the user to provide the exact Sensor Name they wish to analyze.""",
 
-        "BAD_TYPE": """The sensor you specified could not be found. Either the sensor name doesn't exist in the dataset, or the sensor type doesn't match the given sensor name.""",
+        "BAD_TYPE": """The sensor you specified could not be found. Either the sensor name doesn't exist in the dataset, or the sensor type doesn't match the given sensor name.
+- **DO NOT** suggest specific sensor types.
+- **DO NOT** list "possible" options from your internal knowledge.
+- Simply ask the user to provide the exact Sensor Type they wish to analyze.""",
 
         "BAD_CONDITION": """The condition was not found. Explain to the user that we search for
 conditions by scanning the 'condition' property within the 'metadata.json' files
-inside each acquisition folder, and no match was found.""",
+inside each acquisition folder, and no match was found.
+- **DO NOT** list "possible" options from your internal knowledge.
+""",
 
         "BAD_LABEL": """The label/fault detail was not found in the dataset. 
 Explain that we look for these details in the 'metadata.json' files. 
-Suggest that the user verifies their metadata files are complete and correctly labeled.""",
+Suggest that the user verifies their metadata files are complete and correctly labeled.
+- **DO NOT** list "possible" options from your internal knowledge.
+""",
 
         "BAD_ACQUSITION": """The acquisition folder name was not found in the dataset directory. 
 Ask the user to verify the folder name or check if the acquisition exists in the root path.""",

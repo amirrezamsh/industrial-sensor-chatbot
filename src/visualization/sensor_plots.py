@@ -8,19 +8,6 @@ from src.utils.summarizer import get_signal_summary, format_summary_for_llm, get
 def get_sensor_visual_report(acquisition_path, sensor_name, sensor_type=None):
     """
     Generates a matplotlib figure for specific sensor data within an acquisition.
-    
-    Logic:
-    1. Load metadata.json to get units, columns, and sampling rates.
-    2. If sensor_type is provided: Plot only that specific parquet file.
-    3. If sensor_type is None: Find all files for that sensor_name and create subplots.
-    
-    Args:
-        acquisition_path (str): Path to the acquisition folder.
-        sensor_name (str): Name of the sensor (e.g., "IIS3DWB").
-        sensor_type (str, optional): Type of data (e.g., "ACC"). Defaults to None.
-        
-    Returns:
-        matplotlib.figure.Figure or None: The generated figure, or None if no data found.
     """
     metadata_path = os.path.join(acquisition_path, "metadata.json")
     if not os.path.exists(metadata_path):
@@ -54,13 +41,21 @@ def get_sensor_visual_report(acquisition_path, sensor_name, sensor_type=None):
     if len(target_types) == 1:
         axes = [axes] # Ensure axes is always iterable
 
+    # --- NEW: Extract ID and Set Super Title ---
+    # os.path.normpath cleans up mix of slashes, basename gets the final folder name
+    acquisition_id = os.path.basename(os.path.normpath(acquisition_path))
+    fig.suptitle(f"Acquisition ID: {acquisition_id}", fontsize=14, fontweight='bold', y=0.98)
+    # -------------------------------------------
+
     plot_count = 0
     total_summary = []
 
     if "OK" in acquisition_path.upper() :
-        total_summary.append("This observation belongs to OK(normal) category\n")
+        total_summary.append(f"Analysis for Acquisition: **{acquisition_id}**") # Added to text summary too
+        total_summary.append("Condition: OK (Normal State)\n")
     else :
-        total_summary.append("This observation belongs to KO(faulty) category\n")
+        total_summary.append(f"Analysis for Acquisition: **{acquisition_id}**")
+        total_summary.append("Condition: KO (Faulty State)\n")
        
     
     for i, s_type in enumerate(target_types):
@@ -79,7 +74,7 @@ def get_sensor_visual_report(acquisition_path, sensor_name, sensor_type=None):
         # Load data
         df = pd.read_parquet(file_path)
 
-        summary = format_summary_for_llm(get_signal_summary(df,sensor_name, s_type))
+        summary = format_summary_for_llm(get_signal_summary(df, sensor_name, s_type))
         total_summary.append(summary)
         
         # Get metadata details
@@ -92,16 +87,13 @@ def get_sensor_visual_report(acquisition_path, sensor_name, sensor_type=None):
         # Handle Time data and identify feature columns
         if "Time" in df.columns:
             time_axis = df["Time"]
-            # Exclude "Time" from the list of columns to be plotted as data
             data_cols = [c for c in df.columns if c != "Time"]
         else:
-            # Fallback: Create Time Axis (Seconds) based on sampling frequency
             time_axis = [j / fs for j in range(len(df))]
             data_cols = df.columns.tolist()
         
         # Plot each data column directly from the dataframe
         for j, col in enumerate(data_cols):
-            # Use metadata labels for the legend if the index matches, otherwise use raw column name
             label = meta_labels[j] if j < len(meta_labels) else col
             axes[i].plot(time_axis, df[col], label=label, alpha=0.8)
         
@@ -112,7 +104,11 @@ def get_sensor_visual_report(acquisition_path, sensor_name, sensor_type=None):
         plot_count += 1
 
     axes[-1].set_xlabel("Time [seconds]")
-    plt.tight_layout()
+    
+    # --- NEW: Layout Adjustment ---
+    # 'rect' reserves the top 4% of the figure for the suptitle so it doesn't overlap
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    # ------------------------------
     
     return (fig, "\n".join(total_summary)) if plot_count > 0 else None
 

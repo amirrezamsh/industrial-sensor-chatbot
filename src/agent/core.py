@@ -199,7 +199,7 @@ def generate_ollma_response(prompt, message_history) :
                     system_flag = "INVALID_SENSORS"
 
 
-    elif req_category == "data_visualization" or  req_category == "frequency_spectrum":
+    elif req_category == "time_series" or  req_category == "frequency_spectrum":
         if not st.session_state.DATASET_PATH :
             system_flag = "MISSING_DATASET"
         else :
@@ -222,7 +222,7 @@ def generate_ollma_response(prompt, message_history) :
                         system_flag = "BAD_TYPE"
                     else :
 
-                        if req_category == "data_visualization":
+                        if req_category == "time_series":
                             fig, tool_output = get_sensor_visual_report(
                                 acquisition_path= founded_path,
                                 sensor_name= sensor,

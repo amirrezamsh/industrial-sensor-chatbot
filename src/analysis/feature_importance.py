@@ -16,7 +16,7 @@ def get_valid_sensor_files(data_folder, target_sensors):
     
     Args:
         data_folder (str): Path to processed CSVs.
-        target_sensors (list): List of requests [['NAME', 'TYPE'], ['NAME', None]].
+        target_sensors (list): List of requests [['NAME', 'TYPE'], [None, 'TYPE']].
                                Empty list [] implies Global Analysis.
 
     Returns:
@@ -56,24 +56,47 @@ def get_valid_sensor_files(data_folder, target_sensors):
         req_name = req[0]
         req_type = req[1] # Can be None
         
-        # Check Name
-        if req_name not in available_map:
-            all_correct = False
-            continue
-            
-        # Check Type
-        if req_type is None:
-            # User wants ALL types for this sensor
-            # Add all values from the inner dictionary
-            paths = list(available_map[req_name].values())
-            valid_paths.extend(paths)
-            
-        else:
-            # User wants specific type
-            if req_type in available_map[req_name]:
-                valid_paths.append(available_map[req_name][req_type])
+        # --- NEW LOGIC START ---
+        
+        # CASE 1: Name is NONE (User wants specific Type across ALL sensors)
+        # Example: [None, 'TEMP'] -> should fetch HTS221_TEMP, LPS22HH_TEMP, STTS751_TEMP
+        if req_name is None:
+            if req_type is None:
+                # [None, None] technically implies "All files" (rarely passed explicitly)
+                for s in available_map:
+                    valid_paths.extend(available_map[s].values())
             else:
+                found_type_anywhere = False
+                # Iterate through all known sensors to find this type
+                for s_key in available_map:
+                    if req_type in available_map[s_key]:
+                        valid_paths.append(available_map[s_key][req_type])
+                        found_type_anywhere = True
+                
+                # If we went through all sensors and didn't find this type anywhere, it's an error
+                if not found_type_anywhere:
+                    all_correct = False
+        
+        # CASE 2: Specific Sensor Name provided
+        else:
+            # Check if Sensor Name exists
+            if req_name not in available_map:
                 all_correct = False
+                continue
+            
+            # Sub-case: Name + Any Type ([ 'HTS221', None ])
+            if req_type is None:
+                paths = list(available_map[req_name].values())
+                valid_paths.extend(paths)
+                
+            # Sub-case: Name + Specific Type ([ 'HTS221', 'HUM' ])
+            else:
+                if req_type in available_map[req_name]:
+                    valid_paths.append(available_map[req_name][req_type])
+                else:
+                    all_correct = False
+                    
+        # --- NEW LOGIC END ---
 
     # Remove duplicates just in case
     valid_paths = list(set(valid_paths))

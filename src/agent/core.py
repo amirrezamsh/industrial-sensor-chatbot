@@ -117,7 +117,7 @@ def generate_ollma_response(prompt, message_history) :
     try:
         req = json.loads(router_agent_response)
 
-        print(req,end="\n\n")
+        print(req)
 
         req_category = req.get("category", "normal_conversation")
         is_vague = req.get("is_vague", False)
@@ -246,6 +246,13 @@ def generate_ollma_response(prompt, message_history) :
                         
     elif req_category == "normal_conversation" :
         system_flag = "NORMAL_CONVERSATION"
+
+    elif req_category == "dataset_metadata" :
+        if not st.session_state.DATASET_PATH :
+            system_flag = "MISSING_DATASET"
+        else :
+            system_flag = "METADATA"
+
     else :
         req_category = "normal_conversation"
         system_flag = "NORMAL_CONVERSATION"
@@ -253,6 +260,8 @@ def generate_ollma_response(prompt, message_history) :
 
     if (req_category == "feature_importance_analysis" or req_category == "time_series" or req_category == "frequency_spectrum") and not system_flag:
         system_flag = "DATA_ANALYSIS_SUCCESS"
+
+    print(f"SYSTEM FLAG : {system_flag}",end="\n\n")
 
 
     responder_input = prepare_user_prompt_responder(user_query= prompt, system_flag= system_flag, tool_output= tool_output)

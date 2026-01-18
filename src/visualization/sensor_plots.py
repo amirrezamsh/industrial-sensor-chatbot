@@ -56,6 +56,13 @@ def get_sensor_visual_report(acquisition_path, sensor_name, sensor_type=None):
 
     plot_count = 0
     total_summary = []
+
+    if "OK" in acquisition_path.upper() :
+        total_summary.append("This observation belongs to OK(normal) category\n")
+    else :
+        total_summary.append("This observation belongs to KO(faulty) category\n")
+       
+    
     for i, s_type in enumerate(target_types):
         # File naming convention: sensorname_sensortype.parquet
         file_name = f"{sensor_name}_{s_type}.parquet"
@@ -162,6 +169,11 @@ def get_sensor_frequency_report(acquisition_path, sensor_name, sensor_type=None)
 
     plot_count = 0
     total_summary = []
+    if "OK" in acquisition_path.upper() :
+        total_summary.append("This observation belongs to OK(normal) category")
+    else :
+        total_summary.append("This observation belongs to KO(faulty) category")
+        
 
     for i, s_type in enumerate(target_types):
         file_name = f"{sensor_name}_{s_type}.parquet"

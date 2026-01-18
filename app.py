@@ -29,13 +29,15 @@ OLLAMA_API_URL = "http://localhost:11434/api/generate"  # Default Ollama API end
 OLLAMA_MODEL = "llama3.1:8b-instruct-q3_K_M"
 
 SUGGESTIONS = {
-    "Which features most distinguish samples?": (
-        "What is Streamlit, what is it great at, and what can I do with it?"
+    "Global feature importance analysis": (
+        "Which features in my entire dataset better separate the faulty samples from the normal ones?"
     ),
-    "Show me the key statistical differences between two groups": (
-        "Help me understand session state. What is it for? "
-        "What are gotchas? What are alternatives?"
+    "Metadata of dataset": (
+        "what are the different sesnors in my dataset? what are the different sensor types? Also provide me with different fault details and conditions in the dataset"
     ),
+    "Ask about my capabilities":(
+        "Can you tell me what things you are able to do?"
+    )
 }
 
 is_ok = False

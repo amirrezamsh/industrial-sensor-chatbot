@@ -114,7 +114,7 @@ User : "frequency spectrum for ISM330DHCX in folder STWIN_00002"
 JSON: {{
   "category": "frequency_spectrum",
   "is_vague": false,
-  "reasoning": "Specific sensor and folder ID.",
+  "reasoning": "Specific sensor, type is not mentioned specifically by the user so it is set to null. and folder ID.",
   "parameters": {{
       "analysis_config": null,
       "visual_config": {{
@@ -131,7 +131,7 @@ User: "Visualize the data for IIS3DWB from the specific acquisition folder vel-f
 JSON: {{
   "category": "time_series",
   "is_vague": false,
-  "reasoning": "Specific acquisition ID provided. Subset, condition, and label_detail must be null.",
+  "reasoning": "Specific acquisition ID provided. Subset, condition, and label_detail must be null. sensor type is not mentioned by the user therefore must be set to null",
   "parameters": {{
       "analysis_config": null,
       "visual_config": {{

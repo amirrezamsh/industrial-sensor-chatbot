@@ -157,11 +157,17 @@ def get_sensor_frequency_report(acquisition_path, sensor_name, sensor_type=None)
     
     if not target_types:
         return None
-
+    
     # Create figure
     fig, axes = plt.subplots(len(target_types), 1, figsize=(10, 5 * len(target_types)))
     if len(target_types) == 1:
         axes = [axes]
+
+    # --- NEW: Extract ID and Set Super Title ---
+    # os.path.normpath cleans up mix of slashes, basename gets the final folder name
+    acquisition_id = os.path.basename(os.path.normpath(acquisition_path))
+    fig.suptitle(f"Acquisition ID: {acquisition_id}", fontsize=14, fontweight='bold', y=0.98)
+    # -------------------------------------------
 
     plot_count = 0
     total_summary = []

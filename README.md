@@ -1,5 +1,9 @@
 # Industrial IoT Predictive Maintenance Chatbot 🤖
 
+<p align="center">
+  <img src="Sensor_AI.jpg" alt="SenseTimeAI Thumbnail" width="800">
+</p>
+
 An AI-powered conversational agent designed to analyze, visualize, and interpret high-frequency time-series data from industrial sensors. This tool bridges the gap between raw sensor data and actionable engineering insights using a local LLM (Llama 3) and Machine Learning analysis.
 
 **Note:** This agent is hardware-agnostic. It works with any time-series dataset that follows the standard input structure (Parquet/CSV). It does not accept raw binary files directly.

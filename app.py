@@ -329,14 +329,16 @@ h2, h3, h4 {
 }
 
 /* ── Bottom Chat Input ── */
-[data-testid="stBottom"],
-[data-testid="stBottom"] * {
+[data-testid="stBottom"] {
     background: var(--surface-0) !important;
     background-color: var(--surface-0) !important;
-}
-[data-testid="stBottom"] {
     border-top: 1px solid var(--border-dim) !important;
     box-shadow: 0 -20px 60px rgba(6,15,30,0.95) !important;
+}
+/* Dark bg on wrappers but NOT buttons (which have their own blue gradient) */
+[data-testid="stBottom"] *:not(button):not(button *) {
+    background: var(--surface-0) !important;
+    background-color: var(--surface-0) !important;
 }
 
 [data-testid="stChatInput"],
@@ -642,7 +644,6 @@ em {
 """
 
 st.markdown(THEME_CSS, unsafe_allow_html=True)
-
 
 # ─────────────────────────────────────────────
 #  CONSTANTS
